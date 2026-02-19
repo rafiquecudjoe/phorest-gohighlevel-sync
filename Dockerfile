@@ -14,10 +14,10 @@ WORKDIR /app
 ENV DOCKER=true
 
 # Copy everything from api/ directory
-COPY api/package.json api/pnpm-lock.yaml api/prisma.config.js ./
-COPY api/prisma ./prisma/
-COPY api/nest-cli.json api/tsconfig*.json ./
-COPY api/src ./src/
+COPY package.json pnpm-lock.yaml prisma.config.js ./
+COPY prisma ./prisma/
+COPY nest-cli.json tsconfig*.json ./
+COPY src ./src/
 
 # Install dependencies with optimizations
 RUN pnpm config set store-dir ~/.pnpm-store \
@@ -50,7 +50,7 @@ RUN adduser --system --uid 1001 nestjs
 ENV DOCKER=true
 
 # Copy package files
-COPY api/package.json api/pnpm-lock.yaml api/prisma.config.js ./
+COPY package.json pnpm-lock.yaml prisma.config.js ./
 
 # Install only production dependencies
 RUN pnpm config set store-dir ~/.pnpm-store \
@@ -72,7 +72,7 @@ RUN rm -rf ~/.pnpm-store
 COPY --from=base /app/dist ./dist
 
 # Copy public folder (dashboard, static assets)
-COPY api/public ./public/
+COPY public ./public/
 
 # Change ownership to non-root user
 RUN chown -R nestjs:nodejs /app
