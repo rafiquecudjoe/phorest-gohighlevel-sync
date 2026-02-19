@@ -4,6 +4,7 @@ import { PhorestApiClient } from '../../integrations/phorest/phorest-api.client'
 import { PhorestSyncStatus } from '@prisma/client';
 import { ImportResult } from './phorest-staff-import.service';
 import { PhorestClientImportService } from './phorest-client-import.service';
+import moment from 'moment-timezone';
 
 /**
  * Phase 1: Import Appointments from Phorest API to Local Database
@@ -195,22 +196,23 @@ export class PhorestAppointmentImportService {
         dataChanged: boolean = true,
     ): Promise<void> {
         // Phorest returns appointmentDate as YYYY-MM-DD and startTime/endTime as HH:MM:SS.mmm
-        // We need to combine them to create valid DateTime values
+        // We need to combine them to create valid DateTime values in the salon's timezone (EST)
 
         if (!appointment.appointmentDate) {
             throw new Error('Missing appointmentDate');
         }
 
         const appointmentDateStr = appointment.appointmentDate; // YYYY-MM-DD
-
-        // Combine date and time strings
         const startTimeStr = appointment.startTime || '00:00:00.000';
         const endTimeStr = appointment.endTime || '23:59:59.000';
 
-        // Create full ISO datetime strings
-        const startTime = new Date(`${appointmentDateStr}T${startTimeStr}`);
-        const endTime = new Date(`${appointmentDateStr}T${endTimeStr}`);
-        const appointmentDate = new Date(appointmentDateStr);
+        // Use the configured app timezone (EST) to parse the local salon time
+        const timezone = process.env.APP_TIMEZONE || 'America/New_York';
+
+        // Create UTC moments by parsing as local timezone
+        const startTime = moment.tz(`${appointmentDateStr}T${startTimeStr}`, timezone).toDate();
+        const endTime = moment.tz(`${appointmentDateStr}T${endTimeStr}`, timezone).toDate();
+        const appointmentDate = moment.tz(appointmentDateStr, timezone).startOf('day').toDate();
 
         // Validate the parsed dates
         if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
