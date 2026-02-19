@@ -366,8 +366,8 @@ export class ClientSyncService {
                 const phorestUpdatedAt = client.phorestUpdatedAt;
                 const lastSyncedAt = client.lastSyncedAt;
 
-                if (phorestUpdatedAt && lastSyncedAt && phorestUpdatedAt <= lastSyncedAt) {
-                    // Client hasn't been modified in Phorest since last sync - skip
+                if (phorestUpdatedAt && lastSyncedAt && phorestUpdatedAt <= lastSyncedAt && client.syncStatus !== PhorestSyncStatus.PENDING) {
+                    // Client hasn't been modified in Phorest since last sync and no local PENDING status - skip
                     this.logger.debug(
                         `⏭️ Skipping client ${client.phorestId} (${client.firstName} ${client.lastName}) - ` +
                         `no changes since last sync (Phorest: ${phorestUpdatedAt.toISOString()}, ` +

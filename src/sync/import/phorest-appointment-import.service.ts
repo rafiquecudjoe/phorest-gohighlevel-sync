@@ -242,9 +242,7 @@ export class PhorestAppointmentImportService {
                     where: { phorestId: appointment.clientId },
                     data: {
                         lastStylistName: staffName,
-                        // We do NOT update syncStatus to PENDING here because we only want
-                        // a client sync if their actual core details changed. The stylist name
-                        // will be piggybacked on the next regular client sync or appointment sync.
+                        syncStatus: PhorestSyncStatus.PENDING,
                     }
                 });
             } catch (error) {
