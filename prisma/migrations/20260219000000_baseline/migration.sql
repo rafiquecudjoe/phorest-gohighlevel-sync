@@ -64,7 +64,7 @@ CREATE TABLE "sync_run_summaries" (
     "duration_ms" INTEGER,
     "last_error" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "sync_run_summaries_pkey" PRIMARY KEY ("id")
 );
