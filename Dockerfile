@@ -14,7 +14,7 @@ WORKDIR /app
 ENV DOCKER=true
 
 # Copy everything from api/ directory
-COPY package.json pnpm-lock.yaml prisma.config.js ./
+COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
 COPY nest-cli.json tsconfig*.json ./
 COPY src ./src/
@@ -50,7 +50,7 @@ RUN adduser --system --uid 1001 nestjs
 ENV DOCKER=true
 
 # Copy package files
-COPY package.json pnpm-lock.yaml prisma.config.js ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install only production dependencies
 RUN pnpm config set store-dir ~/.pnpm-store \
