@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    
+    /* Strict Type-Checking Options */
+    "strict": true,                           // Enable all strict type-checking options
+    "noImplicitAny": true,                    // Raise error on expressions and declarations with an implied 'any' type
+    "strictNullChecks": true,                 // Enable strict null checks
+    "strictFunctionTypes": true,              // Enable strict checking of function types
+    "strictBindCallApply": true,              // Enable strict 'bind', 'call', and 'apply' methods on functions
+    "strictPropertyInitialization": false,    // Temporarily disabled for DTOs/Entities - will fix later
+    "noImplicitThis": true,                   // Raise error on 'this' expressions with an implied 'any' type
+    "alwaysStrict": true,                     // Parse in strict mode and emit "use strict" for each source file
+    
+    /* Additional Checks */
+    "noUnusedLocals": true,                   // Report errors on unused locals
+    "noUnusedParameters": true,               // Report errors on unused parameters
+    "noImplicitReturns": true,                // Report error when not all code paths in function return a value
+    "noFallthroughCasesInSwitch": true,       // Report errors for fallthrough cases in switch statement
+    "noUncheckedIndexedAccess": false,        // Include 'undefined' in index signature results (optional - can be strict)
+    "noImplicitOverride": true,               // Ensure overriding members in derived classes are marked with an 'override' modifier
+    "noPropertyAccessFromIndexSignature": false, // Require indexed access for keys declared using an indexed type
+    
+    /* Other Options */
+    "forceConsistentCasingInFileNames": true, // Disallow inconsistently-cased references to the same file
+  },
+  "exclude": [
+    "documentation/**/*",
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}

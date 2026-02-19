@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}🔍 Running pre-push checks...${NC}"
+
+# Step 1: Run format
+echo -e "${YELLOW}📝 Running prettier format...${NC}"
+npm run format
+
+# Step 2: Check if format created uncommitted changes
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo -e "${YELLOW}📦 Formatting created changes. Auto-committing...${NC}"
+  
+  # Stage all formatted files
+  git add -A
+  
+  # Commit the formatted changes
+  git commit -m "style: auto-format code with prettier [pre-push]"
+  
+  echo -e "${GREEN}✅ Formatted changes committed${NC}"
+else
+  echo -e "${GREEN}✅ No formatting changes needed${NC}"
+fi
+
+# Step 3: Run tests
+echo -e "${YELLOW}🧪 Running tests...${NC}"
+npm run test
+
+# Check if tests passed
+if [ $? -eq 0 ]; then
+  echo -e "${GREEN}✅ All tests passed!${NC}"
+  echo -e "${GREEN}🚀 Proceeding with push...${NC}"
+  exit 0
+else
+  echo -e "${RED}❌ Tests failed! Push aborted.${NC}"
+  echo -e "${RED}Please fix the failing tests before pushing.${NC}"
+  exit 1
+fi

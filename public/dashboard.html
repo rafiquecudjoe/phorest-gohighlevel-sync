@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sync Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #eee;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-size: 2.2rem;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+        }
+        .tab-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #aaa;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+            border-color: transparent;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Stats Cards */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,217,255,0.2);
+        }
+        .card h3 {
+            font-size: 0.7rem;
+            color: #888;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .card .value.error {
+            background: linear-gradient(90deg, #ff4757, #ff6b7a);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+        
+        /* Sections */
+        .section {
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #00d9ff;
+        }
+        .section h2.error-heading {
+            color: #ff6b7a;
+        }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        th {
+            color: #888;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        tbody tr:hover {
+            background: rgba(255,255,255,0.02);
+        }
+        
+        /* Status badges */
+        .status-success { color: #00ff88; }
+        .status-failed { color: #ff4757; }
+        .status-running { color: #ffa502; }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-error { background: rgba(255,71,87,0.2); color: #ff6b7a; }
+        .badge-client { background: rgba(0,217,255,0.2); color: #00d9ff; }
+        .badge-appointment { background: rgba(0,255,136,0.2); color: #00ff88; }
+        .badge-loyalty { background: rgba(255,165,2,0.2); color: #ffc048; }
+        
+        .error-message {
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #aaa;
+        }
+        
+        /* Entity breakdown cards in error tab */
+        .breakdown-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .breakdown-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .breakdown-card h3 {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 1rem;
+        }
+        .breakdown-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0.8rem;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+        }
+        .breakdown-name {
+            font-weight: 500;
+            color: #ccc;
+            text-transform: capitalize;
+        }
+        .breakdown-count {
+            font-weight: 700;
+            color: #ff6b7a;
+            font-size: 1.1rem;
+        }
+        
+        /* Buttons */
+        .refresh-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+            border: none;
+            padding: 1rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 24px rgba(0,217,255,0.3);
+            transition: transform 0.2s;
+            z-index: 100;
+        }
+        .refresh-btn:hover { transform: scale(1.05); }
+        
+        .loading { opacity: 0.5; }
+        .error-text { color: #ff4757; text-align: center; padding: 2rem; }
+        .success-text { color: #00ff88; text-align: center; padding: 1rem; }
+        
+        .timestamp {
+            color: #666;
+            font-size: 0.85rem;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .section, .card, .breakdown-card {
+            animation: fadeIn 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1>📊 Phorest - GoHighLevel Sync Dashboard</h1>
+        <p class="subtitle">Real-time monitoring of sync operations and error tracking</p>
+        
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('sync')">📈 Sync Status</button>
+            <button class="tab-btn" onclick="switchTab('errors')">⚠️ Error Tracking</button>
+        </div>
+        
+        <!-- Sync Status Tab -->
+        <div id="sync-tab" class="tab-content active">
+            <div class="cards" id="stats">
+                <div class="card"><h3>Loading...</h3><div class="value">-</div></div>
+            </div>
+
+            <div class="section">
+                <h2>📋 Recent Sync Runs</h2>
+                <table id="runs-table">
+                    <thead>
+                        <tr>
+                            <th>Entity</th>
+                            <th>Direction</th>
+                            <th>Status</th>
+                            <th>Success</th>
+                            <th>Failed</th>
+                            <th>Started</th>
+                        </tr>
+                    </thead>
+                    <tbody id="runs-body">
+                        <tr><td colspan="6" style="text-align:center">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2>❌ Recent Failed Records</h2>
+                <table id="failed-table">
+                    <thead>
+                        <tr>
+                            <th>Entity Type</th>
+                            <th>Entity ID</th>
+                            <th>Error</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="failed-body">
+                        <tr><td colspan="4" style="text-align:center">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Error Tracking Tab -->
+        <div id="errors-tab" class="tab-content">
+            <div class="cards">
+                <div class="card">
+                    <h3>Total Unresolved</h3>
+                    <div class="value error" id="total-errors">-</div>
+                </div>
+            </div>
+            
+            <div class="breakdown-grid">
+                <div class="breakdown-card">
+                    <h3>📋 By Entity Type</h3>
+                    <div class="breakdown-list" id="entity-breakdown">
+                        <div style="text-align:center;color:#666;">Loading...</div>
+                    </div>
+                </div>
+                <div class="breakdown-card">
+                    <h3>⚠️ By Error Code</h3>
+                    <div class="breakdown-list" id="error-code-breakdown">
+                        <div style="text-align:center;color:#666;">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="error-heading">🔍 Recent Error Reports</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Entity Type</th>
+                            <th>Entity ID</th>
+                            <th>Error Code</th>
+                            <th>Error Message</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="errors-table">
+                        <tr><td colspan="6" style="text-align:center">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <button class="refresh-btn" onclick="loadAll()">🔄 Refresh</button>
+
+    <script>
+        const API_BASE = '/api/v1/sync';
+
+        // Tab switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tab === 'sync') {
+                document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+                document.getElementById('sync-tab').classList.add('active');
+            } else {
+                document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+                document.getElementById('errors-tab').classList.add('active');
+            }
+        }
+
+        async function fetchJSON(url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            return d.toLocaleString();
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+
+        function getEntityBadgeClass(entityType) {
+            const type = (entityType || '').toLowerCase();
+            if (type === 'client') return 'badge-client';
+            if (type === 'appointment') return 'badge-appointment';
+            if (type === 'loyalty') return 'badge-loyalty';
+            return 'badge-error';
+        }
+
+        // =====================
+        // SYNC TAB FUNCTIONS
+        // =====================
+        async function loadStatusData() {
+            try {
+                const data = await fetchJSON(`${API_BASE}/status`);
+                return data.data || data;
+            } catch (e) {
+                console.error('Failed to load status:', e);
+                return null;
+            }
+        }
+
+        async function loadStats(statusData) {
+            try {
+                const stats = statusData || await loadStatusData();
+                if (!stats) throw new Error('No data available');
+                
+                const cards = [
+                    { label: 'Clients', value: stats.mappings?.client || 0 },
+                    { label: 'Appointments', value: stats.mappings?.appointment || 0 },
+                    { label: 'Check-ins', value: stats.mappings?.checkin || 0 },
+                    { label: 'Bookings', value: stats.mappings?.booking || 0 },
+                    { label: 'Staff', value: stats.mappings?.staff || 0 },
+                    { label: 'Products', value: stats.mappings?.product || 0 },
+                ];
+
+                document.getElementById('stats').innerHTML = cards.map(c => `
+                    <div class="card">
+                        <h3>${c.label}</h3>
+                        <div class="value">${c.value.toLocaleString()}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                document.getElementById('stats').innerHTML = `<div class="error-text">Failed to load stats: ${e.message}</div>`;
+            }
+        }
+
+        async function loadRuns(statusData) {
+            try {
+                const stats = statusData || await loadStatusData();
+                if (!stats) throw new Error('No data available');
+                
+                const runs = stats.recentRuns || [];
+                
+                if (runs.length === 0) {
+                    document.getElementById('runs-body').innerHTML = '<tr><td colspan="6" style="text-align:center">No recent runs</td></tr>';
+                    return;
+                }
+
+                document.getElementById('runs-body').innerHTML = runs.slice(0, 10).map(r => `
+                    <tr>
+                        <td>${r.entityType || '-'}</td>
+                        <td>${r.direction || '-'}</td>
+                        <td class="status-${r.status}">${r.status || '-'}</td>
+                        <td>${r.successCount ?? '-'}</td>
+                        <td>${r.failedCount ?? '-'}</td>
+                        <td class="timestamp">${formatDate(r.startedAt)}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                document.getElementById('runs-body').innerHTML = `<tr><td colspan="7" class="error-text">Failed: ${e.message}</td></tr>`;
+            }
+        }
+
+        async function loadFailed() {
+            try {
+                const data = await fetchJSON(`${API_BASE}/logs/failed`);
+                const logs = data.data || data || [];
+                
+                if (logs.length === 0) {
+                    document.getElementById('failed-body').innerHTML = '<tr><td colspan="4" class="success-text">✅ No failed records!</td></tr>';
+                    return;
+                }
+
+                document.getElementById('failed-body').innerHTML = logs.slice(0, 20).map(l => `
+                    <tr>
+                        <td><span class="badge ${getEntityBadgeClass(l.entityType)}">${l.entityType || '-'}</span></td>
+                        <td style="font-family:monospace;font-size:0.8rem">${l.entityId || '-'}</td>
+                        <td class="error-message" title="${l.errorMessage || ''}">${l.errorMessage || '-'}</td>
+                        <td class="timestamp">${formatDate(l.completedAt)}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                document.getElementById('failed-body').innerHTML = `<tr><td colspan="4" class="error-text">Failed: ${e.message}</td></tr>`;
+            }
+        }
+
+        // =====================
+        // ERROR TAB FUNCTIONS
+        // =====================
+        async function loadRecentErrors() {
+            try {
+                const data = await fetchJSON(`${API_BASE}/errors/recent`);
+                const errors = data.data || [];
+
+                const tbody = document.getElementById('errors-table');
+                
+                if (errors.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="success-text">✅ No recent errors! System is healthy.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = errors.map(error => `
+                    <tr>
+                        <td style="color:#888;font-weight:600;">#${error.id}</td>
+                        <td><span class="badge ${getEntityBadgeClass(error.entityType)}">${error.entityType}</span></td>
+                        <td style="font-family:monospace;font-size:0.85rem;">${error.entityId}</td>
+                        <td><span class="badge badge-error">${error.errorCode || 'N/A'}</span></td>
+                        <td><div class="error-message" title="${error.errorMessage}">${error.errorMessage}</div></td>
+                        <td class="timestamp">${formatTimestamp(error.timestamp)}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load recent errors:', error);
+                document.getElementById('errors-table').innerHTML = 
+                    `<tr><td colspan="6" class="error-text">❌ Failed to load errors: ${error.message}</td></tr>`;
+            }
+        }
+
+        async function loadErrorStats() {
+            try {
+                const data = await fetchJSON(`${API_BASE}/errors/stats`);
+                const stats = data.data || {};
+
+                // Update total errors
+                document.getElementById('total-errors').textContent = stats.totalUnresolved || 0;
+
+                // Update entity breakdown
+                const entityBreakdown = document.getElementById('entity-breakdown');
+                const byEntityType = stats.byEntityType || {};
+                
+                if (Object.keys(byEntityType).length === 0) {
+                    entityBreakdown.innerHTML = '<div class="success-text">✅ No errors by entity</div>';
+                } else {
+                    entityBreakdown.innerHTML = Object.entries(byEntityType)
+                        .map(([entity, count]) => `
+                            <div class="breakdown-item">
+                                <span class="breakdown-name">${entity}</span>
+                                <span class="breakdown-count">${count}</span>
+                            </div>
+                        `).join('');
+                }
+
+                // Update error code breakdown
+                const errorCodeBreakdown = document.getElementById('error-code-breakdown');
+                const byErrorCode = stats.byErrorCode || {};
+                
+                if (Object.keys(byErrorCode).length === 0) {
+                    errorCodeBreakdown.innerHTML = '<div class="success-text">✅ No errors by code</div>';
+                } else {
+                    errorCodeBreakdown.innerHTML = Object.entries(byErrorCode)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([code, count]) => `
+                            <div class="breakdown-item">
+                                <span class="breakdown-name">${code}</span>
+                                <span class="breakdown-count">${count}</span>
+                            </div>
+                        `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load error stats:', error);
+                document.getElementById('entity-breakdown').innerHTML = 
+                    `<div class="error-text">Failed to load stats</div>`;
+            }
+        }
+
+        // =====================
+        // LOAD ALL
+        // =====================
+        async function loadAll() {
+            // Fetch status once and share between stats and runs
+            const statusData = await loadStatusData();
+            loadStats(statusData);
+            loadRuns(statusData);
+            loadFailed();
+            loadRecentErrors();
+            loadErrorStats();
+        }
+
+        // Initial load
+        loadAll();
+        // Auto-refresh every 30s
+        setInterval(loadAll, 30000);
+    </script>
+</body>
+</html>

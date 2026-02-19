@@ -1,0 +1,481 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Prisma 7 configuration - database URL is now in prisma.config.ts
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x", "darwin", "darwin-arm64", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserType {
+  client
+  agent
+  staff
+}
+
+model ApiClient {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @map("name") @db.VarChar(50)
+  secret      String    @map("secret") @db.VarChar(250)
+  key         String    @map("key") @db.VarChar(50)
+  ipAddresses Json?     @map("ip_addresses")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt   DateTime? @updatedAt @map("updated_at") @db.Timestamp(3)
+
+  @@map("api_client")
+}
+
+// OAuth tokens for GoHighLevel
+model GhlOAuthToken {
+  id           String   @id @default(cuid())
+  locationId   String   @unique @map("location_id")
+  accessToken  String   @map("access_token") @db.Text
+  refreshToken String   @map("refresh_token") @db.Text
+  expiresAt    DateTime @map("expires_at")
+  scopes       String[] @map("scopes")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("ghl_oauth_tokens")
+}
+
+// Entity ID mappings between Phorest and GHL
+model EntityMapping {
+  id         String   @id @default(cuid())
+  entityType String   @map("entity_type") // 'client', 'appointment', 'staff', etc.
+  phorestId  String   @map("phorest_id")
+  ghlId      String   @map("ghl_id")
+  metadata   Json?    @map("metadata") // Additional sync metadata
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([entityType, phorestId])
+  // @@unique([entityType, ghlId]) // Removed: Allow multiple Phorest staff to map to same GHL User
+  @@index([phorestId])
+  @@index([ghlId])
+  @@map("entity_mappings")
+}
+
+// Sync run summary for at-a-glance status
+model SyncRunSummary {
+  id           String    @id @default(cuid())
+  batchId      String    @unique @map("batch_id")
+  jobId        String?   @map("job_id")
+  direction    String    @map("direction") // 'phorest_to_ghl', 'ghl_to_phorest'
+  entityType   String    @map("entity_type")
+  // Counts for quick overview
+  totalRecords Int       @default(0) @map("total_records")
+  successCount Int       @default(0) @map("success_count")
+  failedCount  Int       @default(0) @map("failed_count")
+  skippedCount Int       @default(0) @map("skipped_count")
+  status       String    @map("status") // 'running', 'completed', 'failed', 'partial'
+  startedAt    DateTime  @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  durationMs   Int?      @map("duration_ms")
+  // Last error for quick glance
+  lastError    String?   @map("last_error") @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at") // Heartbeat timestamp for long-running jobs
+
+  // Relations
+  logs SyncLog[]
+
+  @@index([status])
+  @@index([direction, entityType])
+  @@index([createdAt])
+  @@map("sync_run_summaries")
+}
+
+// Sync logs for audit trail - QUICK FAILURE VISIBILITY
+model SyncLog {
+  id           String         @id @default(cuid())
+  runId        String         @map("run_id")
+  run          SyncRunSummary @relation(fields: [runId], references: [id], onDelete: Cascade)
+  jobId        String?        @map("job_id") // BullMQ job ID for correlation
+  batchId      String         @map("batch_id") // Group logs from same sync run
+  entityType   String         @map("entity_type") // 'client', 'appointment', 'staff', etc.
+  entityId     String?        @map("entity_id") // Phorest or GHL entity ID
+  direction    String         @map("direction") // 'phorest_to_ghl', 'ghl_to_phorest'
+  action       String         @map("action") // 'create', 'update', 'skip', 'delete'
+  status       String         @map("status") // 'success', 'failed', 'skipped'
+  // Quick failure tracking
+  errorCode    String?        @map("error_code") // HTTP status or error type
+  errorMessage String?        @map("error_message") @db.Text
+  retryCount   Int            @default(0) @map("retry_count")
+  // Payload for debugging
+  sourceData   Json?          @map("source_data") // Original data from source API
+  targetData   Json?          @map("target_data") // Transformed data sent to target
+  responseData Json?          @map("response_data") // Response from target API
+  // Timing
+  startedAt    DateTime       @map("started_at")
+  completedAt  DateTime?      @map("completed_at")
+  durationMs   Int?           @map("duration_ms") // How long the operation took
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  @@index([batchId])
+  @@index([status]) // Quick filter for failures
+  @@index([entityType])
+  @@index([createdAt])
+  @@index([status, createdAt]) // Failed items by time
+  @@index([runId])
+  @@map("sync_logs")
+}
+
+// Sync audit results - comparing local DB with GHL
+model SyncAuditLog {
+  id           String   @id @default(cuid())
+  auditRunId   String   @map("audit_run_id") // Unique ID for this audit run
+  entityType   String   @map("entity_type") // 'client', 'appointment', 'staff'
+  localCount   Int      @map("local_count") // Count from EntityMapping table
+  ghlCount     Int      @map("ghl_count") // Count from GHL API
+  match        Boolean  @map("match") // true if counts match
+  discrepancy  Int      @default(0) @map("discrepancy") // Difference (can be negative)
+  sampleChecks Json?    @map("sample_checks") // Random sample verification results
+  details      Json?    @map("details") // Additional audit details
+  errorMessage String?  @map("error_message") @db.Text // Error if audit failed
+  status       String   @map("status") // 'success', 'failed', 'partial'
+  durationMs   Int?     @map("duration_ms")
+  auditedAt    DateTime @default(now()) @map("audited_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([auditRunId])
+  @@index([entityType])
+  @@index([match])
+  @@index([auditedAt])
+  @@map("sync_audit_logs")
+}
+
+// Failed sync records for dashboard visibility
+model ReportedEntity {
+  id           Int      @id @default(autoincrement())
+  entityType   String   @map("entity_type") // 'client', 'appointment', 'loyalty'
+  entityId     String   @map("entity_id") // GHL or Phorest entity ID
+  errorMessage String   @map("error_message") @db.Text
+  errorCode    String?  @map("error_code") // HTTP status or error type
+  timestamp    DateTime @default(now())
+  resolved     Boolean  @default(false)
+
+  @@index([entityType, timestamp])
+  @@index([resolved])
+  @@index([timestamp])
+  @@map("reported_entities")
+}
+
+// ============ PHOREST LOCAL DATA TABLES ============
+// Two-Phase Sync: Phorest → Local DB → GHL
+
+enum PhorestSyncStatus {
+  PENDING // Not yet synced to GHL
+  SYNCED // Successfully synced
+  FAILED // Sync failed (check syncError)
+  SKIPPED // Skipped (invalid data)
+}
+
+model PhorestStaff {
+  id        String  @id @default(cuid())
+  phorestId String  @unique @map("phorest_id")
+  branchId  String? @map("branch_id")
+
+  // Personal Info
+  firstName String  @map("first_name")
+  lastName  String  @map("last_name")
+  email     String?
+  mobile    String?
+  gender    String?
+  birthDate String? @map("birth_date")
+
+  // Employment
+  position          String?
+  startDate         String? @map("start_date")
+  selfEmployed      Boolean @default(false) @map("self_employed")
+  staffCategoryId   String? @map("staff_category_id")
+  staffCategoryName String? @map("staff_category_name")
+
+  // Status
+  active   Boolean @default(true)
+  archived Boolean @default(false)
+  deleted  Boolean @default(false)
+
+  // Profile
+  notes    String? @db.Text
+  imageUrl String? @map("image_url")
+
+  // Sync Status (Phase 2: Local → GHL)
+  syncStatus   PhorestSyncStatus @default(PENDING) @map("sync_status")
+  ghlContactId String?           @map("ghl_contact_id")
+  lastSyncedAt DateTime?         @map("last_synced_at")
+  syncError    String?           @map("sync_error") @db.Text
+
+  // Timestamps
+  phorestCreatedAt DateTime? @map("phorest_created_at")
+  phorestUpdatedAt DateTime? @map("phorest_updated_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([syncStatus])
+  @@index([email])
+  @@map("phorest_staff")
+}
+
+model PhorestProduct {
+  id        String  @id @default(cuid())
+  phorestId String  @unique @map("phorest_id")
+  branchId  String? @map("branch_id")
+
+  // Product Info
+  name         String
+  description  String? @db.Text
+  categoryId   String? @map("category_id")
+  categoryName String? @map("category_name")
+
+  // Pricing
+  price     Decimal  @db.Decimal(10, 2)
+  costPrice Decimal? @map("cost_price") @db.Decimal(10, 2)
+
+  // Inventory
+  sku          String?
+  barcode      String?
+  stockLevel   Int?    @map("stock_level")
+  reorderLevel Int?    @map("reorder_level")
+
+  // Status
+  active   Boolean @default(true)
+  archived Boolean @default(false)
+  deleted  Boolean @default(false)
+
+  // Sync Status (Phase 2: Local → GHL)
+  syncStatus   PhorestSyncStatus @default(PENDING) @map("sync_status")
+  ghlProductId String?           @map("ghl_product_id")
+  lastSyncedAt DateTime?         @map("last_synced_at")
+  syncError    String?           @map("sync_error") @db.Text
+
+  // Timestamps
+  phorestCreatedAt DateTime? @map("phorest_created_at")
+  phorestUpdatedAt DateTime? @map("phorest_updated_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([syncStatus])
+  @@index([categoryId])
+  @@index([active])
+  @@map("phorest_products")
+}
+
+model PhorestService {
+  id        String  @id @default(cuid())
+  phorestId String  @unique @map("phorest_id")
+  branchId  String? @map("branch_id")
+
+  // Service Info
+  name         String
+  description  String? @db.Text
+  categoryId   String? @map("category_id")
+  categoryName String? @map("category_name")
+
+  // Pricing & Duration
+  price    Decimal @db.Decimal(10, 2)
+  duration Int // in minutes
+
+  // Booking
+  bookable       Boolean @default(true)
+  onlineBookable Boolean @default(true) @map("online_bookable")
+
+  // Status
+  active   Boolean @default(true)
+  archived Boolean @default(false)
+  deleted  Boolean @default(false)
+
+  // Sync Status
+  syncStatus   PhorestSyncStatus @default(PENDING) @map("sync_status")
+  lastSyncedAt DateTime?         @map("last_synced_at")
+
+  // Timestamps
+  phorestCreatedAt DateTime? @map("phorest_created_at")
+  phorestUpdatedAt DateTime? @map("phorest_updated_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([syncStatus])
+  @@index([categoryId])
+  @@index([active])
+  @@map("phorest_services")
+}
+
+model PhorestClient {
+  id        String @id @default(cuid())
+  phorestId String @unique @map("phorest_id")
+
+  // Personal Info
+  firstName String  @map("first_name")
+  lastName  String  @map("last_name")
+  email     String?
+  mobile    String?
+  landLine  String? @map("land_line")
+  gender    String?
+  birthDate String? @map("birth_date")
+
+  // Address
+  streetAddress1 String? @map("street_address_1")
+  streetAddress2 String? @map("street_address_2")
+  city           String?
+  state          String?
+  postalCode     String? @map("postal_code")
+  country        String?
+
+  // Preferences
+  preferredStaffId String? @map("preferred_staff_id")
+  lastStylistName  String? @map("last_stylist_name") // Set during appointment import
+  notes            String? @db.Text
+
+  // Categories (stored as JSON array)
+  clientCategoryIds Json? @map("client_category_ids")
+
+  // Status
+  archived Boolean @default(false)
+  banned   Boolean @default(false)
+  deleted  Boolean @default(false)
+
+  // Marketing Consent
+  smsMarketingConsent   Boolean @default(false) @map("sms_marketing_consent")
+  emailMarketingConsent Boolean @default(false) @map("email_marketing_consent")
+  smsReminderConsent    Boolean @default(true) @map("sms_reminder_consent")
+  emailReminderConsent  Boolean @default(true) @map("email_reminder_consent")
+
+  // Loyalty
+  loyaltyCardSerial String? @map("loyalty_card_serial")
+  loyaltyPoints     Int?    @map("loyalty_points")
+
+  // Visit History
+  clientSince DateTime? @map("client_since")
+  firstVisit  DateTime? @map("first_visit")
+  lastVisit   DateTime? @map("last_visit")
+
+  // Sync Status (Phase 2: Local → GHL)
+  syncStatus   PhorestSyncStatus @default(PENDING) @map("sync_status")
+  ghlContactId String?           @map("ghl_contact_id")
+  lastSyncedAt DateTime?         @map("last_synced_at")
+  syncError    String?           @map("sync_error") @db.Text
+
+  // Timestamps
+  phorestCreatedAt DateTime? @map("phorest_created_at")
+  phorestUpdatedAt DateTime? @map("phorest_updated_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  appointments PhorestAppointment[]
+
+  @@index([syncStatus])
+  @@index([email])
+  @@index([mobile])
+  @@index([ghlContactId])
+  @@map("phorest_clients")
+}
+
+model PhorestAppointment {
+  id        String @id @default(cuid())
+  phorestId String @unique @map("phorest_id")
+  branchId  String @map("branch_id")
+
+  // References
+  clientId  String? @map("client_id")
+  staffId   String? @map("staff_id")
+  serviceId String? @map("service_id")
+  bookingId String? @map("booking_id")
+
+  // Service Details
+  serviceName String? @map("service_name")
+
+  // Timing
+  appointmentDate DateTime @map("appointment_date")
+  startTime       DateTime @map("start_time")
+  endTime         DateTime @map("end_time")
+
+  // Status
+  state           String // BOOKED, ARRIVED, COMPLETED, NO_SHOW, CANCELLED
+  activationState String  @map("activation_state") // ACTIVE, ARCHIVED, CANCELED
+  confirmed       Boolean @default(false)
+  deleted         Boolean @default(false)
+
+  // Pricing
+  price         Decimal? @db.Decimal(10, 2)
+  depositAmount Decimal? @map("deposit_amount") @db.Decimal(10, 2)
+
+  // Booking Source
+  source String? // API, WIDGET, PHOREST
+
+  // Notes
+  notes String? @db.Text
+
+  // Sync Status (Phase 2: Local → GHL)
+  syncStatus   PhorestSyncStatus @default(PENDING) @map("sync_status")
+  ghlEventId   String?           @map("ghl_event_id")
+  lastSyncedAt DateTime?         @map("last_synced_at")
+  syncError    String?           @map("sync_error") @db.Text
+
+  // Timestamps
+  phorestCreatedAt DateTime? @map("phorest_created_at")
+  phorestUpdatedAt DateTime? @map("phorest_updated_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  client PhorestClient? @relation(fields: [clientId], references: [phorestId])
+
+  @@index([syncStatus])
+  @@index([clientId])
+  @@index([staffId])
+  @@index([appointmentDate])
+  @@index([state])
+  @@map("phorest_appointments")
+}
+
+model PhorestClientCategory {
+  id          String  @id @default(cuid())
+  phorestId   String  @unique @map("phorest_id")
+  name        String
+  description String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("phorest_client_categories")
+}
+
+model PhorestBooking {
+  id        String @id @default(cuid())
+  phorestId String @unique @map("phorest_id")
+  version   Int?
+  branchId  String @map("branch_id")
+
+  // Client Connection
+  clientId String? @map("client_id")
+
+  // Status
+  status String? // PAID, CHECKED_IN, etc.
+
+  // Timing
+  bookingDate DateTime @map("booking_date")
+  createdAt   DateTime @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Sync Status
+  syncStatus   PhorestSyncStatus @default(PENDING) @map("sync_status")
+  ghlEventId   String?           @map("ghl_event_id")
+  lastSyncedAt DateTime?         @map("last_synced_at")
+  syncError    String?           @map("sync_error") @db.Text
+
+  // Timestamps
+  phorestCreatedAt DateTime? @map("phorest_created_at")
+  phorestUpdatedAt DateTime? @map("phorest_updated_at")
+
+  @@index([syncStatus])
+  @@index([clientId])
+  @@index([bookingDate])
+  @@map("phorest_bookings")
+}
