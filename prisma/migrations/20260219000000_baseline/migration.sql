@@ -29,7 +29,7 @@ CREATE TABLE "ghl_oauth_tokens" (
     "expires_at" TIMESTAMP(3) NOT NULL,
     "scopes" TEXT[],
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ghl_oauth_tokens_pkey" PRIMARY KEY ("id")
 );
@@ -42,7 +42,7 @@ CREATE TABLE "entity_mappings" (
     "ghl_id" TEXT NOT NULL,
     "metadata" JSONB,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "entity_mappings_pkey" PRIMARY KEY ("id")
 );
@@ -155,7 +155,7 @@ CREATE TABLE "phorest_staff" (
     "phorest_created_at" TIMESTAMP(3),
     "phorest_updated_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "phorest_staff_pkey" PRIMARY KEY ("id")
 );
@@ -185,7 +185,7 @@ CREATE TABLE "phorest_products" (
     "phorest_created_at" TIMESTAMP(3),
     "phorest_updated_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "phorest_products_pkey" PRIMARY KEY ("id")
 );
@@ -211,7 +211,7 @@ CREATE TABLE "phorest_services" (
     "phorest_created_at" TIMESTAMP(3),
     "phorest_updated_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "phorest_services_pkey" PRIMARY KEY ("id")
 );
@@ -256,7 +256,7 @@ CREATE TABLE "phorest_clients" (
     "phorest_created_at" TIMESTAMP(3),
     "phorest_updated_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "phorest_clients_pkey" PRIMARY KEY ("id")
 );
@@ -289,7 +289,7 @@ CREATE TABLE "phorest_appointments" (
     "phorest_created_at" TIMESTAMP(3),
     "phorest_updated_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "phorest_appointments_pkey" PRIMARY KEY ("id")
 );
@@ -301,7 +301,7 @@ CREATE TABLE "phorest_client_categories" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "phorest_client_categories_pkey" PRIMARY KEY ("id")
 );
@@ -316,7 +316,7 @@ CREATE TABLE "phorest_bookings" (
     "status" TEXT,
     "booking_date" TIMESTAMP(3) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "sync_status" "PhorestSyncStatus" NOT NULL DEFAULT 'PENDING',
     "ghl_event_id" TEXT,
     "last_synced_at" TIMESTAMP(3),
