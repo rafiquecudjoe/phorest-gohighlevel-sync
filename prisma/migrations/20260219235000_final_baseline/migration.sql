@@ -1,14 +1,21 @@
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
--- CreateEnum
-CREATE TYPE "UserType" AS ENUM ('client', 'agent', 'staff');
+-- CreateEnum (Idempotent)
+DO $$ BEGIN
+    CREATE TYPE "UserType" AS ENUM ('client', 'agent', 'staff');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateEnum
-CREATE TYPE "PhorestSyncStatus" AS ENUM ('PENDING', 'SYNCED', 'FAILED', 'SKIPPED');
+DO $$ BEGIN
+    CREATE TYPE "PhorestSyncStatus" AS ENUM ('PENDING', 'SYNCED', 'FAILED', 'SKIPPED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateTable
-CREATE TABLE "api_client" (
+-- CreateTable (Idempotent)
+CREATE TABLE IF NOT EXISTS "api_client" (
     "id" SERIAL NOT NULL,
     "name" VARCHAR(50) NOT NULL,
     "secret" VARCHAR(250) NOT NULL,
@@ -20,8 +27,7 @@ CREATE TABLE "api_client" (
     CONSTRAINT "api_client_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "ghl_oauth_tokens" (
+CREATE TABLE IF NOT EXISTS "ghl_oauth_tokens" (
     "id" TEXT NOT NULL,
     "location_id" TEXT NOT NULL,
     "access_token" TEXT NOT NULL,
@@ -34,8 +40,7 @@ CREATE TABLE "ghl_oauth_tokens" (
     CONSTRAINT "ghl_oauth_tokens_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "entity_mappings" (
+CREATE TABLE IF NOT EXISTS "entity_mappings" (
     "id" TEXT NOT NULL,
     "entity_type" TEXT NOT NULL,
     "phorest_id" TEXT NOT NULL,
@@ -47,8 +52,7 @@ CREATE TABLE "entity_mappings" (
     CONSTRAINT "entity_mappings_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "sync_run_summaries" (
+CREATE TABLE IF NOT EXISTS "sync_run_summaries" (
     "id" TEXT NOT NULL,
     "batch_id" TEXT NOT NULL,
     "job_id" TEXT,
@@ -69,8 +73,7 @@ CREATE TABLE "sync_run_summaries" (
     CONSTRAINT "sync_run_summaries_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "sync_logs" (
+CREATE TABLE IF NOT EXISTS "sync_logs" (
     "id" TEXT NOT NULL,
     "run_id" TEXT NOT NULL,
     "job_id" TEXT,
@@ -94,8 +97,7 @@ CREATE TABLE "sync_logs" (
     CONSTRAINT "sync_logs_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "sync_audit_logs" (
+CREATE TABLE IF NOT EXISTS "sync_audit_logs" (
     "id" TEXT NOT NULL,
     "audit_run_id" TEXT NOT NULL,
     "entity_type" TEXT NOT NULL,
@@ -114,8 +116,7 @@ CREATE TABLE "sync_audit_logs" (
     CONSTRAINT "sync_audit_logs_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "reported_entities" (
+CREATE TABLE IF NOT EXISTS "reported_entities" (
     "id" SERIAL NOT NULL,
     "entity_type" TEXT NOT NULL,
     "entity_id" TEXT NOT NULL,
@@ -127,8 +128,7 @@ CREATE TABLE "reported_entities" (
     CONSTRAINT "reported_entities_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "phorest_staff" (
+CREATE TABLE IF NOT EXISTS "phorest_staff" (
     "id" TEXT NOT NULL,
     "phorest_id" TEXT NOT NULL,
     "branch_id" TEXT,
@@ -160,8 +160,7 @@ CREATE TABLE "phorest_staff" (
     CONSTRAINT "phorest_staff_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "phorest_products" (
+CREATE TABLE IF NOT EXISTS "phorest_products" (
     "id" TEXT NOT NULL,
     "phorest_id" TEXT NOT NULL,
     "branch_id" TEXT,
@@ -190,8 +189,7 @@ CREATE TABLE "phorest_products" (
     CONSTRAINT "phorest_products_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "phorest_services" (
+CREATE TABLE IF NOT EXISTS "phorest_services" (
     "id" TEXT NOT NULL,
     "phorest_id" TEXT NOT NULL,
     "branch_id" TEXT,
@@ -216,8 +214,7 @@ CREATE TABLE "phorest_services" (
     CONSTRAINT "phorest_services_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "phorest_clients" (
+CREATE TABLE IF NOT EXISTS "phorest_clients" (
     "id" TEXT NOT NULL,
     "phorest_id" TEXT NOT NULL,
     "first_name" TEXT NOT NULL,
@@ -261,8 +258,7 @@ CREATE TABLE "phorest_clients" (
     CONSTRAINT "phorest_clients_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "phorest_appointments" (
+CREATE TABLE IF NOT EXISTS "phorest_appointments" (
     "id" TEXT NOT NULL,
     "phorest_id" TEXT NOT NULL,
     "branch_id" TEXT NOT NULL,
@@ -294,8 +290,7 @@ CREATE TABLE "phorest_appointments" (
     CONSTRAINT "phorest_appointments_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "phorest_client_categories" (
+CREATE TABLE IF NOT EXISTS "phorest_client_categories" (
     "id" TEXT NOT NULL,
     "phorest_id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -306,8 +301,7 @@ CREATE TABLE "phorest_client_categories" (
     CONSTRAINT "phorest_client_categories_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "phorest_bookings" (
+CREATE TABLE IF NOT EXISTS "phorest_bookings" (
     "id" TEXT NOT NULL,
     "phorest_id" TEXT NOT NULL,
     "version" INTEGER,
@@ -327,155 +321,66 @@ CREATE TABLE "phorest_bookings" (
     CONSTRAINT "phorest_bookings_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "api_client_name_key" ON "api_client"("name");
+-- CreateIndex (Idempotent)
+CREATE UNIQUE INDEX IF NOT EXISTS "api_client_name_key" ON "api_client"("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "ghl_oauth_tokens_location_id_key" ON "ghl_oauth_tokens"("location_id");
+CREATE INDEX IF NOT EXISTS "entity_mappings_phorest_id_idx" ON "entity_mappings"("phorest_id");
+CREATE INDEX IF NOT EXISTS "entity_mappings_ghl_id_idx" ON "entity_mappings"("ghl_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "entity_mappings_entity_type_phorest_id_key" ON "entity_mappings"("entity_type", "phorest_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "sync_run_summaries_batch_id_key" ON "sync_run_summaries"("batch_id");
+CREATE INDEX IF NOT EXISTS "sync_run_summaries_status_idx" ON "sync_run_summaries"("status");
+CREATE INDEX IF NOT EXISTS "sync_run_summaries_direction_entity_type_idx" ON "sync_run_summaries"("direction", "entity_type");
+CREATE INDEX IF NOT EXISTS "sync_run_summaries_created_at_idx" ON "sync_run_summaries"("created_at");
+CREATE INDEX IF NOT EXISTS "sync_logs_batch_id_idx" ON "sync_logs"("batch_id");
+CREATE INDEX IF NOT EXISTS "sync_logs_status_idx" ON "sync_logs"("status");
+CREATE INDEX IF NOT EXISTS "sync_logs_entity_type_idx" ON "sync_logs"("entity_type");
+CREATE INDEX IF NOT EXISTS "sync_logs_created_at_idx" ON "sync_logs"("created_at");
+CREATE INDEX IF NOT EXISTS "sync_logs_status_created_at_idx" ON "sync_logs"("status", "created_at");
+CREATE INDEX IF NOT EXISTS "sync_logs_run_id_idx" ON "sync_logs"("run_id");
+CREATE INDEX IF NOT EXISTS "sync_audit_logs_audit_run_id_idx" ON "sync_audit_logs"("audit_run_id");
+CREATE INDEX IF NOT EXISTS "sync_audit_logs_entity_type_idx" ON "sync_audit_logs"("entity_type");
+CREATE INDEX IF NOT EXISTS "sync_audit_logs_match_idx" ON "sync_audit_logs"("match");
+CREATE INDEX IF NOT EXISTS "sync_audit_logs_audited_at_idx" ON "sync_audit_logs"("audited_at");
+CREATE INDEX IF NOT EXISTS "reported_entities_entity_type_timestamp_idx" ON "reported_entities"("entity_type", "timestamp");
+CREATE INDEX IF NOT EXISTS "reported_entities_resolved_idx" ON "reported_entities"("resolved");
+CREATE INDEX IF NOT EXISTS "reported_entities_timestamp_idx" ON "reported_entities"("timestamp");
+CREATE UNIQUE INDEX IF NOT EXISTS "phorest_staff_phorest_id_key" ON "phorest_staff"("phorest_id");
+CREATE INDEX IF NOT EXISTS "phorest_staff_sync_status_idx" ON "phorest_staff"("sync_status");
+CREATE INDEX IF NOT EXISTS "phorest_staff_email_idx" ON "phorest_staff"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "phorest_products_phorest_id_key" ON "phorest_products"("phorest_id");
+CREATE INDEX IF NOT EXISTS "phorest_products_sync_status_idx" ON "phorest_products"("sync_status");
+CREATE INDEX IF NOT EXISTS "phorest_products_category_id_idx" ON "phorest_products"("category_id");
+CREATE INDEX IF NOT EXISTS "phorest_products_active_idx" ON "phorest_products"("active");
+CREATE UNIQUE INDEX IF NOT EXISTS "phorest_services_phorest_id_key" ON "phorest_services"("phorest_id");
+CREATE INDEX IF NOT EXISTS "phorest_services_sync_status_idx" ON "phorest_services"("sync_status");
+CREATE INDEX IF NOT EXISTS "phorest_services_category_id_idx" ON "phorest_services"("category_id");
+CREATE INDEX IF NOT EXISTS "phorest_services_active_idx" ON "phorest_services"("active");
+CREATE UNIQUE INDEX IF NOT EXISTS "phorest_clients_phorest_id_key" ON "phorest_clients"("phorest_id");
+CREATE INDEX IF NOT EXISTS "phorest_clients_sync_status_idx" ON "phorest_clients"("sync_status");
+CREATE INDEX IF NOT EXISTS "phorest_clients_email_idx" ON "phorest_clients"("email");
+CREATE INDEX IF NOT EXISTS "phorest_clients_mobile_idx" ON "phorest_clients"("mobile");
+CREATE INDEX IF NOT EXISTS "phorest_clients_ghl_contact_id_idx" ON "phorest_clients"("ghl_contact_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "phorest_appointments_phorest_id_key" ON "phorest_appointments"("phorest_id");
+CREATE INDEX IF NOT EXISTS "phorest_appointments_sync_status_idx" ON "phorest_appointments"("sync_status");
+CREATE INDEX IF NOT EXISTS "phorest_appointments_client_id_idx" ON "phorest_appointments"("client_id");
+CREATE INDEX IF NOT EXISTS "phorest_appointments_staff_id_idx" ON "phorest_appointments"("staff_id");
+CREATE INDEX IF NOT EXISTS "phorest_appointments_appointment_date_idx" ON "phorest_appointments"("appointment_date");
+CREATE INDEX IF NOT EXISTS "phorest_appointments_state_idx" ON "phorest_appointments"("state");
+CREATE UNIQUE INDEX IF NOT EXISTS "phorest_client_categories_phorest_id_key" ON "phorest_client_categories"("phorest_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "phorest_bookings_phorest_id_key" ON "phorest_bookings"("phorest_id");
+CREATE INDEX IF NOT EXISTS "phorest_bookings_sync_status_idx" ON "phorest_bookings"("sync_status");
+CREATE INDEX IF NOT EXISTS "phorest_bookings_client_id_idx" ON "phorest_bookings"("client_id");
+CREATE INDEX IF NOT EXISTS "phorest_bookings_booking_date_idx" ON "phorest_bookings"("booking_date");
 
--- CreateIndex
-CREATE UNIQUE INDEX "ghl_oauth_tokens_location_id_key" ON "ghl_oauth_tokens"("location_id");
+-- AddForeignKey (Idempotent using DO block)
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'sync_logs_run_id_fkey') THEN
+        ALTER TABLE "sync_logs" ADD CONSTRAINT "sync_logs_run_id_fkey" FOREIGN KEY ("run_id") REFERENCES "sync_run_summaries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- CreateIndex
-CREATE INDEX "entity_mappings_phorest_id_idx" ON "entity_mappings"("phorest_id");
-
--- CreateIndex
-CREATE INDEX "entity_mappings_ghl_id_idx" ON "entity_mappings"("ghl_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "entity_mappings_entity_type_phorest_id_key" ON "entity_mappings"("entity_type", "phorest_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "sync_run_summaries_batch_id_key" ON "sync_run_summaries"("batch_id");
-
--- CreateIndex
-CREATE INDEX "sync_run_summaries_status_idx" ON "sync_run_summaries"("status");
-
--- CreateIndex
-CREATE INDEX "sync_run_summaries_direction_entity_type_idx" ON "sync_run_summaries"("direction", "entity_type");
-
--- CreateIndex
-CREATE INDEX "sync_run_summaries_created_at_idx" ON "sync_run_summaries"("created_at");
-
--- CreateIndex
-CREATE INDEX "sync_logs_batch_id_idx" ON "sync_logs"("batch_id");
-
--- CreateIndex
-CREATE INDEX "sync_logs_status_idx" ON "sync_logs"("status");
-
--- CreateIndex
-CREATE INDEX "sync_logs_entity_type_idx" ON "sync_logs"("entity_type");
-
--- CreateIndex
-CREATE INDEX "sync_logs_created_at_idx" ON "sync_logs"("created_at");
-
--- CreateIndex
-CREATE INDEX "sync_logs_status_created_at_idx" ON "sync_logs"("status", "created_at");
-
--- CreateIndex
-CREATE INDEX "sync_logs_run_id_idx" ON "sync_logs"("run_id");
-
--- CreateIndex
-CREATE INDEX "sync_audit_logs_audit_run_id_idx" ON "sync_audit_logs"("audit_run_id");
-
--- CreateIndex
-CREATE INDEX "sync_audit_logs_entity_type_idx" ON "sync_audit_logs"("entity_type");
-
--- CreateIndex
-CREATE INDEX "sync_audit_logs_match_idx" ON "sync_audit_logs"("match");
-
--- CreateIndex
-CREATE INDEX "sync_audit_logs_audited_at_idx" ON "sync_audit_logs"("audited_at");
-
--- CreateIndex
-CREATE INDEX "reported_entities_entity_type_timestamp_idx" ON "reported_entities"("entity_type", "timestamp");
-
--- CreateIndex
-CREATE INDEX "reported_entities_resolved_idx" ON "reported_entities"("resolved");
-
--- CreateIndex
-CREATE INDEX "reported_entities_timestamp_idx" ON "reported_entities"("timestamp");
-
--- CreateIndex
-CREATE UNIQUE INDEX "phorest_staff_phorest_id_key" ON "phorest_staff"("phorest_id");
-
--- CreateIndex
-CREATE INDEX "phorest_staff_sync_status_idx" ON "phorest_staff"("sync_status");
-
--- CreateIndex
-CREATE INDEX "phorest_staff_email_idx" ON "phorest_staff"("email");
-
--- CreateIndex
-CREATE UNIQUE INDEX "phorest_products_phorest_id_key" ON "phorest_products"("phorest_id");
-
--- CreateIndex
-CREATE INDEX "phorest_products_sync_status_idx" ON "phorest_products"("sync_status");
-
--- CreateIndex
-CREATE INDEX "phorest_products_category_id_idx" ON "phorest_products"("category_id");
-
--- CreateIndex
-CREATE INDEX "phorest_products_active_idx" ON "phorest_products"("active");
-
--- CreateIndex
-CREATE UNIQUE INDEX "phorest_services_phorest_id_key" ON "phorest_services"("phorest_id");
-
--- CreateIndex
-CREATE INDEX "phorest_services_sync_status_idx" ON "phorest_services"("sync_status");
-
--- CreateIndex
-CREATE INDEX "phorest_services_category_id_idx" ON "phorest_services"("category_id");
-
--- CreateIndex
-CREATE INDEX "phorest_services_active_idx" ON "phorest_services"("active");
-
--- CreateIndex
-CREATE UNIQUE INDEX "phorest_clients_phorest_id_key" ON "phorest_clients"("phorest_id");
-
--- CreateIndex
-CREATE INDEX "phorest_clients_sync_status_idx" ON "phorest_clients"("sync_status");
-
--- CreateIndex
-CREATE INDEX "phorest_clients_email_idx" ON "phorest_clients"("email");
-
--- CreateIndex
-CREATE INDEX "phorest_clients_mobile_idx" ON "phorest_clients"("mobile");
-
--- CreateIndex
-CREATE INDEX "phorest_clients_ghl_contact_id_idx" ON "phorest_clients"("ghl_contact_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "phorest_appointments_phorest_id_key" ON "phorest_appointments"("phorest_id");
-
--- CreateIndex
-CREATE INDEX "phorest_appointments_sync_status_idx" ON "phorest_appointments"("sync_status");
-
--- CreateIndex
-CREATE INDEX "phorest_appointments_client_id_idx" ON "phorest_appointments"("client_id");
-
--- CreateIndex
-CREATE INDEX "phorest_appointments_staff_id_idx" ON "phorest_appointments"("staff_id");
-
--- CreateIndex
-CREATE INDEX "phorest_appointments_appointment_date_idx" ON "phorest_appointments"("appointment_date");
-
--- CreateIndex
-CREATE INDEX "phorest_appointments_state_idx" ON "phorest_appointments"("state");
-
--- CreateIndex
-CREATE UNIQUE INDEX "phorest_client_categories_phorest_id_key" ON "phorest_client_categories"("phorest_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "phorest_bookings_phorest_id_key" ON "phorest_bookings"("phorest_id");
-
--- CreateIndex
-CREATE INDEX "phorest_bookings_sync_status_idx" ON "phorest_bookings"("sync_status");
-
--- CreateIndex
-CREATE INDEX "phorest_bookings_client_id_idx" ON "phorest_bookings"("client_id");
-
--- CreateIndex
-CREATE INDEX "phorest_bookings_booking_date_idx" ON "phorest_bookings"("booking_date");
-
--- AddForeignKey
-ALTER TABLE "sync_logs" ADD CONSTRAINT "sync_logs_run_id_fkey" FOREIGN KEY ("run_id") REFERENCES "sync_run_summaries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "phorest_appointments" ADD CONSTRAINT "phorest_appointments_client_id_fkey" FOREIGN KEY ("client_id") REFERENCES "phorest_clients"("phorest_id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'phorest_appointments_client_id_fkey') THEN
+        ALTER TABLE "phorest_appointments" ADD CONSTRAINT "phorest_appointments_client_id_fkey" FOREIGN KEY ("client_id") REFERENCES "phorest_clients"("phorest_id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
