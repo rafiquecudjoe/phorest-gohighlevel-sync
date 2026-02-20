@@ -479,4 +479,3 @@ ALTER TABLE "sync_logs" ADD CONSTRAINT "sync_logs_run_id_fkey" FOREIGN KEY ("run
 
 -- AddForeignKey
 ALTER TABLE "phorest_appointments" ADD CONSTRAINT "phorest_appointments_client_id_fkey" FOREIGN KEY ("client_id") REFERENCES "phorest_clients"("phorest_id") ON DELETE SET NULL ON UPDATE CASCADE;
-
